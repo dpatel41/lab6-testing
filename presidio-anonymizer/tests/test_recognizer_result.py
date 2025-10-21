@@ -284,6 +284,46 @@ def test_given_negative_start_or_endpoint_then_we_fail(start, end):
     ):
         create_recognizer_result("entity", 0, start, end)
 
+@pytest.mark.parametrize(
+    "a,b,expected",
+    [
+        # No overlap (clearly separated)
+        ((0, 4),  (10, 15), 0),
+        ((10, 15), (0, 4),  0),
+
+        # Exact-touch boundaries (end == start) → 0
+        ((0, 5),  (5, 10), 0),
+        ((5, 10), (0, 5),  0),
+
+        # Partial overlaps
+        ((0, 10), (5, 15), 5),   # overlap 5..10 → length 5
+        ((5, 15), (0, 10), 5),
+
+        # Full overlap (identical)
+        ((3, 9),  (3, 9),  6),
+
+        # Complete containment (A contains B)
+        ((0, 20), (5, 10), 5),
+        # Complete containment (B contains A)
+        ((5, 10), (0, 20), 5),
+
+        # Edge-ish partials
+        ((0, 6),  (1, 5),  4),
+        ((1, 5),  (0, 6),  4),
+    ],
+)
+def test_intersects(a, b, expected):
+    """
+    a and b are (start, end) half-open-like integer ranges used by RecognizerResult.
+    """
+    # We'll use the provided factory below in the file.
+    ra = create_recognizer_result("A", 0.9, a[0], a[1])
+    rb = create_recognizer_result("B", 0.9, b[0], b[1])
+
+    # Check both directions for symmetry correctness
+    assert ra.intersects(rb) == expected
+    assert rb.intersects(ra) == expected
+
 
 def create_recognizer_result(entity_type: str, score: float, start: int, end: int):
     data = {"entity_type": entity_type, "score": score, "start": start, "end": end}
